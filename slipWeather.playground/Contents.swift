@@ -6,6 +6,9 @@ PlaygroundPage.current.needsIndefiniteExecution = true;
 
 let apiKey: String = "2dd8f457671f8f42cf85af02cf47ca48";
 
+let currentWeatherUrl: String = "https://api.openweathermap.org/data/2.5/weather"
+let forecastUrl: String = "https://api.openweathermap.org/data/2.5/forecast"
+
 extension URL {
     func withQueries(_ queries: [String: String]) -> URL? {
         var components = URLComponents(url: self, resolvingAgainstBaseURL: true)
@@ -16,52 +19,157 @@ extension URL {
     }
 }
 
-struct Forecast: Codable {
-    
-    let weather: [Weather]
-    let wind: Wind
-    //let rain: Rain
-    let clouds: Clouds
+struct CurrentWeather: Codable {
     
     struct Weather: Codable {
         let main: String
         let description: String
-    }
-    
-    struct Wind: Codable {
-        let speed: Float
-    }
-    
-    struct Rain: Codable {
-        let type: String
         
-        private enum MyStructKeys: String, CodingKey {
-            case type = "3h"
+        enum MyStructKeys: String, CodingKey {
+            case main = "main"
+            case description = "description"
         }
         
         init(from decoder: Decoder) throws {
-            let container = try decoder.container(keyedBy: MyStructKeys.self) // defining our (keyed) container
-            self.type = try container.decode(String.self, forKey: .type)
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.main = try container.decodeIfPresent(String.self, forKey: .main) ?? ""
+            self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        }
+        
+        init() {
+            self.main = ""
+            self.description = ""
+        }
+    }
+    
+    struct Main: Codable {
+        let temp, pressure, humidity, temp_min, temp_max, sea_level, grnd_level: Float
+        
+        enum MyStructKeys: String, CodingKey {
+            case temp, pressure, humidity, temp_min, temp_max, sea_level, grnd_level
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.temp = try container.decodeIfPresent(Float.self, forKey: .temp) ?? 0.0
+            self.pressure = try container.decodeIfPresent(Float.self, forKey: .pressure) ?? 0.0
+            self.humidity = try container.decodeIfPresent(Float.self, forKey: .humidity) ?? 0.0
+            self.temp_min = try container.decodeIfPresent(Float.self, forKey: .temp_min) ?? 0.0
+            self.temp_max = try container.decodeIfPresent(Float.self, forKey: .temp_max) ?? 0.0
+            self.sea_level = try container.decodeIfPresent(Float.self, forKey: .sea_level) ?? 0.0
+            self.grnd_level = try container.decodeIfPresent(Float.self, forKey: .grnd_level) ?? 0.0
+        }
+        
+        init() {
+            self.temp = 0.0
+            self.pressure = 0.0
+            self.humidity = 0.0
+            self.temp_min = 0.0
+            self.temp_max = 0.0
+            self.sea_level = 0.0
+            self.grnd_level = 0.0
+        }
+    }
+    
+    struct Wind: Codable {
+        let speed, deg: Float
+        
+        enum MyStructKeys: String, CodingKey {
+            case speed, deg
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.speed = try container.decodeIfPresent(Float.self, forKey: .speed) ?? 0.0
+            self.deg = try container.decodeIfPresent(Float.self, forKey: .deg) ?? 0.0
+        }
+        
+        init() {
+            self.speed = 0.0
+            self.deg = 0.0
         }
     }
     
     struct Clouds: Codable {
-        let all: Int
+        let all: Float
+        
+        enum MyStructKeys: String, CodingKey {
+            case all
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.all = try container.decodeIfPresent(Float.self, forKey: .all) ?? 0.0
+        }
+        
+        init() {
+            self.all = 0.0
+        }
     }
+    
+    struct Rain: Codable {
+        let one, three: String
+        
+        private enum MyStructKeys: String, CodingKey {
+            case one = "1h"
+            case three = "3h"
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.one = try container.decodeIfPresent(String.self, forKey: .one) ?? ""
+            self.three = try container.decodeIfPresent(String.self, forKey: .three) ?? ""
+        }
+        
+        init() {
+            self.one = ""
+            self.three = ""
+        }
+    }
+    
+    struct Snow: Codable {
+        let one, three: String
+        
+        private enum MyStructKeys: String, CodingKey {
+            case one = "1h"
+            case three = "3h"
+        }
+        
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: MyStructKeys.self)
+            self.one = try container.decodeIfPresent(String.self, forKey: .one) ?? ""
+            self.three = try container.decodeIfPresent(String.self, forKey: .three) ?? ""
+        }
+        
+        init() {
+            self.one = ""
+            self.three = ""
+        }
+    }
+    
+    let weather: [Weather]
+    let main: Main
+    let wind: Wind
+    let rain: Rain
+    let clouds: Clouds
+    let snow: Snow
+    let dt: Int
+    let name: String
 
     enum MyStructKeys: String, CodingKey {
-        case weather = "weather"
-        case wind = "wind"
-        case rain = "rain"
-        case clouds = "clouds"
+        case weather, main, clouds, wind, rain, snow, dt, name
     }
     
     init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: MyStructKeys.self) // defining our (keyed) container
-        self.weather = try container.decode([Weather].self, forKey: .weather) // extracting the data
-        self.wind = try container.decode(Wind.self, forKey: .wind) // extracting the data
-        //self.rain = try container.decode(Rain.self, forKey: .rain) // extracting the data
-        self.clouds = try container.decode(Clouds.self, forKey: .clouds) // extracting the data
+        let container = try decoder.container(keyedBy: MyStructKeys.self)
+        self.weather = try container.decodeIfPresent([Weather].self, forKey: .weather) ?? [Weather()]
+        self.main = try container.decodeIfPresent(Main.self, forKey: .main) ?? Main()
+        self.wind = try container.decodeIfPresent(Wind.self, forKey: .wind) ?? Wind()
+        self.rain = try container.decodeIfPresent(Rain.self, forKey: .rain) ?? Rain()
+        self.snow = try container.decodeIfPresent(Snow.self, forKey: .snow) ?? Snow()
+        self.clouds = try container.decodeIfPresent(Clouds.self, forKey: .clouds) ?? Clouds()
+        self.dt = try container.decodeIfPresent(Int.self, forKey: .dt) ?? 0
+        self.name = try container.decode(String.self, forKey: .name) ?? ""
     }
 }
 
@@ -100,20 +208,20 @@ func getForecastForCityName (cityName: String, cityDic: [String: String]) -> Str
     }
 }
 
-func getForecastForCityId(cityId: String, completionHandler: @escaping (Forecast?, String?, Error?) -> Void) -> URLSessionTask {
+func getCurrentWeatherForCityId(cityId: String, completionHandler: @escaping (CurrentWeather?, String?, Error?) -> Void) -> URLSessionTask {
     
     let query: [String: String] = [
         "id": cityId,
         "APPID": apiKey
     ]
     
-    let url = URL(string: "https://api.openweathermap.org/data/2.5/weather?")!.withQueries(query)!
+    let url = URL(string: currentWeatherUrl)!.withQueries(query)!
     let task = URLSession.shared.dataTask(with: url){ (data, response, error) -> Void in
         if let error = error {
             completionHandler(nil, nil, error)
         }
         if let data = data {
-            if let goodData = try? JSONDecoder().decode(Forecast.self, from: data) {
+            if let goodData = try? JSONDecoder().decode(CurrentWeather.self, from: data) {
                 completionHandler(goodData, nil, nil);
                 return;
             } else {
@@ -131,7 +239,7 @@ func getForecastForCityId(cityId: String, completionHandler: @escaping (Forecast
 
 if let cityDic = readJson() {
     if let cityId = getForecastForCityName(cityName: "Paris", cityDic: cityDic) {
-        getForecastForCityId(cityId: cityId) { forecast, string, error in
+        getCurrentWeatherForCityId(cityId: cityId) { currentWeather, string, error in
             if let error = error {
                 print("error")
                 print(error);
@@ -142,9 +250,9 @@ if let cityDic = readJson() {
                 print(string);
             }
             
-            if let forecast = forecast {
-                print("forecast")
-                print(forecast)
+            if let currentWeather = currentWeather {
+                print("currentWeather")
+                print(currentWeather)
             }
             print("over")
             PlaygroundPage.current.finishExecution()
